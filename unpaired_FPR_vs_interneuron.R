@@ -45,6 +45,8 @@ for (variance_idx in 1:length(interneuron_variances)){
   record[variance_idx,"lmer_false_negative_rate"] = sum((tmp$ground_truth) & !tmp$lmer_positive) / sum(tmp$ground_truth)
 }
 
+#Make the plot...
+
 library(ggplot2)
 library(patchwork)
 

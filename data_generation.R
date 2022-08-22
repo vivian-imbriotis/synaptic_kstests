@@ -21,43 +21,35 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, control_
 
   intervention_group_mean <- control_group_mean + treatment_effect
   
+  #Set up an empty (correctly sized) dataframe to hold our control group data
   rows = n_control_neurons * samples_per_neuron
   dat_control <- data.frame(neuron_id = numeric(rows), group=character(rows),dependant=numeric(rows))
+  
+  #For each neuron...
   for (i in 1:n_control_neurons){
+    #How far away from the group (control or intervention) mean is this neuron's mean?
     neuron_deviation <- rnorm(1, mean=0, sd = control_group_interneuron_sd)
-    # for (rep in 1:samples_per_neuron){
-    #   
-    #   row <- (i-1)*samples_per_neuron + rep
-    #   # dat$group[row] <- 0
-    #   # dat$neuron_id[row] <- i
-    # 
-    #   #How far is this neuron from the group mean?
-    #   dependant <-  rnorm(1,mean = control_group_mean + neuron_deviation, sd = within_neuron_sd)
-    #   
-    #   dat_control[row,] <- c(i,0,dependant)
-    # }
-    
+    #Randomly generate all that neuron's observations...
     row_range = seq((i-1)*samples_per_neuron + 1, i*samples_per_neuron)
     dat_control[row_range,"dependant"] <- rnorm(samples_per_neuron, mean = control_group_mean + neuron_deviation, sd = within_neuron_sd)
+    
+    #Fill out the neuron's exogenous variables
     dat_control[row_range,"neuron_id"] <- i
     dat_control[row_range,"group"] <- "Control"
   }
   
+  #Repeat for the intervention group
   rows = n_intervention_neurons * samples_per_neuron
   dat_intervention <- data.frame(neuron_id = numeric(rows), group=character(rows),dependant=numeric(rows))
   for (i in 1:n_intervention_neurons){
     neuron_deviation <- rnorm(1, mean=0, sd = intervention_group_interneuron_sd)
-    # for (rep in 1:samples_per_neuron){
-    #   row <- (i-1)*samples_per_neuron + rep
-    #   #How far is this neuron from the group mean?
-    #   dependant <-  rnorm(1,mean = intervention_group_mean + neuron_deviation, sd = within_neuron_sd)
-    #   dat_intervention[row,] <- c(i + n_control_neurons,1,dependant)
-    # }
     row_range = seq((i-1)*samples_per_neuron + 1, i*samples_per_neuron)
     dat_intervention[row_range,"dependant"] <- rnorm(samples_per_neuron, mean = control_group_mean + neuron_deviation, sd = within_neuron_sd)
     dat_intervention[row_range,"neuron_id"] <- i
-    dat_intervention[row_range,"group"] <- "Control"
+    dat_intervention[row_range,"group"] <- "Intervention"
   }
+  
+  #Glue the control and intervention groups together and return them
   dat <- rbind(dat_control,dat_intervention)
   
   return(dat)
@@ -65,6 +57,7 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, control_
 
 
 plot_data <- function(dat){
+  #Plot each neuron's empirical PDF (unfilled histogram) colored by that neuron's group
   plt <- ggplot(data=dat, aes(x = dependant, color = group))
   for (id in 1:(n_control_neurons + n_intervention_neurons)){
     plt <- plt + geom_freqpoly(data = dat[dat$neuron_id==id,])
