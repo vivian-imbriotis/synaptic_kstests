@@ -59,7 +59,7 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, control_
 plot_data <- function(dat){
   #Plot each neuron's empirical PDF (unfilled histogram) colored by that neuron's group
   plt <- ggplot(data=dat, aes(x = dependant, color = group))
-  for (id in 1:(n_control_neurons + n_intervention_neurons)){
+  for (id in unique(dat$neuron_id)){
     plt <- plt + geom_freqpoly(data = dat[dat$neuron_id==id,])
   }
   
