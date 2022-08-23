@@ -57,6 +57,7 @@ check_test_performances_while_varying_data_parameter <- function(varying_param =
       res <- ks.test(dat$dependant[dat$group=="Control"],dat$dependant[dat$group=="Intervention"])
       ks_positive <- res$p.value < alpha
       
+      
       model <- lmerTest::lmer(dependant ~ group + (1|neuron_id), data = dat)
       res <- drop1(model)
       lmer_positive <- res$`Pr(>F)` < alpha

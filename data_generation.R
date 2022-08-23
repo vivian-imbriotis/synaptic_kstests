@@ -44,7 +44,7 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, control_
   for (i in 1:n_intervention_neurons){
     neuron_deviation <- rnorm(1, mean=0, sd = intervention_group_interneuron_sd)
     row_range = seq((i-1)*samples_per_neuron + 1, i*samples_per_neuron)
-    dat_intervention[row_range,"dependant"] <- rnorm(samples_per_neuron, mean = control_group_mean + neuron_deviation, sd = within_neuron_sd)
+    dat_intervention[row_range,"dependant"] <- rnorm(samples_per_neuron, mean = intervention_group_mean + neuron_deviation, sd = within_neuron_sd)
     dat_intervention[row_range,"neuron_id"] <- i
     dat_intervention[row_range,"group"] <- "Intervention"
   }
