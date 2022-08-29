@@ -16,7 +16,7 @@ record$run <- 1:N
 
 for (i in 1:N){
   
-  dat <- gen_unpaired_data_fast(treatment_effect = ATE, control_group_interneuron_sd = INTER, intervention_group_interneuron_sd = INTER, 
+  dat <- gen_unpaired_data(treatment_effect = ATE, control_group_interneuron_sd = INTER, intervention_group_interneuron_sd = INTER, 
                            within_neuron_sd = WITHIN, n_control_neurons = 20, n_intervention_neurons = 20)
   
   overall_sd_control <- sd(dat[dat$group=="Control"     ,"dependant"])
