@@ -1,5 +1,6 @@
 source("data_generation.R")
 
+
 TOTAL_VAR <- 1
 TOTAL_SS <- 120
 BOOTSTRAP_SAMPLES <- 40

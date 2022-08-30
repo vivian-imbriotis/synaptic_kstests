@@ -1,26 +1,25 @@
 
-#' gen_unpaired_data
-#' Generates a set of mock miniature synaptic event data.
-#' The data consists of 2 groups, a control and intervention group.
-#' Each group contains a number of neurons.
-#' Each neuron is associated with several samples.
-#'
-#' @param control_group_mean The baseline mean of the control group
-#' @param treatment_effect  The mean difference between control and intervention groups
-#' @param control_group_interneuron_sd  the SD between the means of individual neurons in the control group
-#' @param intervention_group_interneuron_sd the SD between the means of individual neurons in the intervention group
-#' @param within_neuron_sd the SD between samples taken from a single neuron
-#' @param n_control_neurons number of neurons in the control group
-#' @param n_intervention_neurons number of neurons in the intervention group
-#' @param samples_per_neuron number of samples per neuron
-#'
-#' @return a dataframe with the columns (group, neuron_id, dependant), where each row is an observation
-#' 
-
 DEFAULT_INTERNEURON_SD <- 0.34
 DEFAULT_WITHIN_NEURON_SD <- 0.61
 
 
+#' Generate Unpaired Dataset
+#' Generate unpaired simulated spontaneuous miniature synaptic events dataset.
+#' The dataset will have 2 populations of neurons, a control and intervention
+#' group group.
+#' Each neuron will be sampled multiple times.
+#' 
+#' @param control_group_mean The mean of the control group
+#' @param treatment_effect The difference (in data units) between the intervention and control groups
+#' @param control_group_interneuron_sd  The standard deviation between neuronal means in the control group
+#' @param intervention_group_interneuron_sd The standard devaition between neuronal means in the intervention group
+#' @param control_within_neuron_sd The standard deviation between different observations from the same neuron, when that neuron is is the control group
+#' @param intervention_within_neuron_sd The standard deviation between different observations from the same neruon, when that neuron is in the intervention group
+#' @param n_control_neurons The number of neurons in the control group
+#' @param n_intervention_neurons The number of neurons in the intervention group
+#' @param samples_per_neuron The number of times each neuron is sampled / the number of events per neuron
+#'
+#' @return A dataframe with the columns dependant (i.e. the frequency or amplitude), group ('Intervention' or 'Control') and neuron_id (a factor level)
 gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, 
                               control_group_interneuron_sd      = DEFAULT_INTERNEURON_SD, 
                               intervention_group_interneuron_sd = DEFAULT_INTERNEURON_SD, 
@@ -68,6 +67,22 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1,
   return(dat)
 }
 
+#' Generate Paired Dataset
+#' 
+#' Generate a paired simulated spontaneous miniature synaptic events dataset.
+#' The dataset has a single population of neurons, each of which is measured while in the control group,
+#' and then measured again in the intervention group. This is analagous to measuring the same set of 
+#' neurons before and after administation of a drug (for example).
+#'
+#' @inheritParams gen_unpaired_data
+#' @param interneuron_sd The standard deviation between neuron means within one of the groups (control or intervention)
+#' @param within_neuron_sd The standard deviation between different observations from the same neuron
+#' @param residual_interneuron_sd The standard deviation between the mean of the same neuron when in the control state vs the intervention state
+#' @param n_neurons The number of neurons
+#' @param samples_per_neuron The number of samples per neuron per group (each neuron is sampled this many times in both the control and intervention states)
+#'
+#' @inheritSection gen_unpaired_data return
+
 gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuron_sd = 2, within_neuron_sd=2, residual_interneuron_sd = 0.5,
                               n_neurons=10, samples_per_neuron=100) {
   
@@ -78,7 +93,7 @@ gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuro
   control_grp_neuron_means      <- fixed_neuron_means + rnorm(n_neurons, mean=0, sd = residual_interneuron_sd)
   intervention_grp_neuron_means <- fixed_neuron_means + rnorm(n_neurons, mean=0, sd = residual_interneuron_sd)
   
-  #Repeat the neuron means
+  #Repeat the neuron means for each sample
   neuron_effect <- rep(control_grp_neuron_means, each = samples_per_neuron)
   
   #All the neurons have the same within-neuron variance, so it suffices to add a residual noise term
@@ -109,6 +124,15 @@ gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuro
   return(dat)
 }
 
+#' Plot a dataset
+#' 
+#' Create a simple plot of a generated dataset
+#'
+#' @param dat The dataset
+#' @param colorby Either 'group' or 'neuron id'. If 'group', color the control/intervention groups differently. If neuron_id, each neuron is assigned a color, and the control and intervention states are distriguished by a dotted/unbroken line.
+#'
+#' @return ggplot object
+
 plot_data <- function(dat, colorby = "group"){
   #Plot each neuron's empirical PDF (unfilled histogram) colored by that neuron's group
   if (colorby=="group"){
@@ -128,6 +152,14 @@ plot_data <- function(dat, colorby = "group"){
 }
 
 
+#' Is KS Test Positive
+#'
+#' Given a dataset, test whether the KS test on that dataset will return p<alpha
+#' @param dat The dataset
+#' @param alpha The critical value, defaults to 0.05
+#'
+#' @return bool
+
 is_ks_test_positive <- function(dat, alpha = 0.05){
   #Perform the KS test
   res <- ks.test(dat$dependant[dat$group=="Control"],dat$dependant[dat$group=="Intervention"])
@@ -135,9 +167,15 @@ is_ks_test_positive <- function(dat, alpha = 0.05){
   return(ks_positive)
 }
 
+#' Is LMER Positive
+#'
+#' Given a dataset, test whether a mixed model comparison with 1 dropped term will return p<alpha
+#' @inheritParams is_ks_test_positive
+#' @param suppress Whether to suppress model fitting warnings (for fitting many models), defaults to FALSE
+#'
+#' @return bool
 
 is_lmer_test_positive <- function(dat, alpha = 0.05, suppress = FALSE){
-  #Suppress model fitting warnings (when fitting many models)
   if (suppress){
     return(suppressMessages(is_lmer_test_positive(dat,alpha)))
   }
@@ -152,6 +190,19 @@ is_lmer_test_positive <- function(dat, alpha = 0.05, suppress = FALSE){
 }
 
 
+
+#' Get False Positive Rate
+#'
+#' For a given set of dataset parameters, determine the false positive rate (with a point estimate and confidence interval)
+#'
+#' @param n_samples How many datasets to simulate
+#' @param saveplot If TRUE, save a figure of an example dataset
+#' @inheritParams is_lmer_test_positive 
+#' @param paired Whether the generated datasets should be paired (ONe group of neurons, treated vs untreated) or unpaired (2 groups of neurons, control vs intervention)
+#' @param filename The name to save the example dataset under; no effect if saveplot=FALSE
+#' @param ... Further args are passed on to gen_paired_data if paired=TRUE or gen_unpaired_data if paired=FALSE
+#'
+#' @return A dataframe with columns ks and lmer, and rownames value (i.e. point estimate), lower_CI, upper_CI
 
 get_fpr <- function(n_samples, saveplot = FALSE, suppress=FALSE, 
                     paired = FALSE, filename="dataset", ...){
@@ -183,6 +234,14 @@ get_fpr <- function(n_samples, saveplot = FALSE, suppress=FALSE,
   lmer_fpr <- c(lmer_positives / n_samples, c(prop.test(lmer_positives,n_samples)$conf.int))
   return(data.frame(ks=ks_fpr,lmer=lmer_fpr, row.names = c("value", "lower_CI", "upper_CI")))
 }
+
+#' Get Statistical Power
+#'
+#'
+#' For a given set of dataseet parameters, determine the statistical power (with a point estimate and confidence interval)
+#' 
+#' @inheritParams get_fpr
+#' @inheritSection get_fpr return
 
 get_power <- function(n_samples, saveplot = FALSE, paired = FALSE, filename = "dataset", suppress = FALSE, ...){
   ks_positives   <- 0

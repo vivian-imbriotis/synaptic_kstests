@@ -8,6 +8,27 @@ ALPHA = 0.05
 HALF_UNIT_VARIANCE_SD <- sqrt(2)/2
 
 
+#' Check test performance while varying a single parameter
+#' 
+#'
+#' @param varying_param One of 'interneuron variance', 'intraneuron variance', 'effect size', 'intervention group variance'. See details.
+#' @param param_values The values varying_param should take on
+#' @param alpha The critical value, defaults to 0.05
+#' @param n_samples The number of datasets to generate for each value varying_param takes on
+#' @param reserve_plots If True, save a figure for a representative example of each dataset
+#' @param power_only If True, only determine the power (not the false positive rate)
+#' @param fpr_only If True, only determine the false positive rate (not the power)
+#' @param n_neurons The number of neurons in each generated dataset (if paired=FALSE, they will be evenly split between control and intervention groups)
+#' @param paired Whether the datasets should be paired or unpaired. See ?data_generation::gen_paired_data and ?data_generation::gen_unpaired_data
+#' @param ... Further parameters are passed on to gen_paired_data if paired=TRUE and gen_unpaired_data otherwise
+#'
+#' @details This figure holds all but one data-generating parameter constant, varying that one parameter.
+#' If varying_param='interneuron variance', then the variance between neuronal means is varied.
+#' If varying_param='intraneuron variance', then the variance between different observations from the same neuron is varied
+#' If varying_param='effect size', then the effect size is varied, holding all variances in the data constant.
+#' If varying_param='intervention group variance' is varied, then the intervention group's variance is varied, holding the control group's variance constant.
+#' 
+#' @return data.frame object
 check_test_performances_while_varying_data_parameter <- function(varying_param = "interneuron variance", 
                                                                  param_values = seq(from=0,to=1,by=0.1),
                                                                  alpha = ALPHA,
@@ -97,6 +118,18 @@ check_test_performances_while_varying_data_parameter <- function(varying_param =
 }
 
 
+
+#' Plot test performances against a varying data parameter
+#'
+#' Create a figure showing how the performance (FPR and statistical power) of the tests (KS tests and a mixed model comparison test) vary as 
+#' a single parameter used to generate the dataset takes on different values. 
+#' 
+#' @inheritParams varying_param 
+#' @inheritDotParams varying_param
+#' 
+#' @inherit varying_params details
+#' 
+#' @return ggplot object
 
 plot_test_performances_against_varying_data_parameter <- function(varying_param = "interneuron variance",...){
   
