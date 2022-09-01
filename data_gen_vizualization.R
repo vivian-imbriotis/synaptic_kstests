@@ -1,6 +1,6 @@
 source("data_generation.r")
 
-
+set.seed(0)
 
 #' Generate gridded dataset draws
 #'
@@ -10,7 +10,7 @@ source("data_generation.r")
 #' @param ...  Additional arguments are passed on to gen_paired_data if paired=TRUE or gen_unpaired data otherwise
 #'
 #' @return data.frame
-gen_gridded_dataset_draws <- function(nrows=3, ncols=3, paired = T, ...){
+gen_gridded_dataset_draws <- function(nrows=3, ncols=3, paired = F, ...){
   rows = 1:nrows
   cols = 1:ncols
   
@@ -27,7 +27,7 @@ gen_gridded_dataset_draws <- function(nrows=3, ncols=3, paired = T, ...){
         dat<- gen_paired_data(interneuron_sd = sqrt(between), within_neuron_sd = sqrt(within), ...)
       }else{      
         dat<- gen_unpaired_data(control_group_interneuron_sd = sqrt(between), intervention_group_interneuron_sd = sqrt(between),
-                                          within_neuron_sd = sqrt(within), ...)
+                                          control_within_neuron_sd = sqrt(within), intervention_within_neuron_sd = sqrt(within), ...)
       }
 
       
@@ -53,10 +53,8 @@ gen_gridded_dataset_draws <- function(nrows=3, ncols=3, paired = T, ...){
 #'
 #' @return ggplot object
 plot_gridded_dataset_draws <- function(longform_datasets, marginalize_neurons = FALSE, cumulative = FALSE, paired = F){
-  
-  
-  
   library(ggplot2)
+
   plt <- ggplot(data = longform_datasets, aes(x = dependant, color = group))
   
   if (marginalize_neurons && !cumulative){
@@ -75,11 +73,62 @@ plot_gridded_dataset_draws <- function(longform_datasets, marginalize_neurons = 
     }
   }
   
-  plt <- plt + facet_grid(rows = vars(between_neuron_variance), cols = vars(within_neuron_variance), labeller = label_both)
+  plt <- plt + facet_grid(rows                    = vars(between_neuron_variance),               cols = vars(within_neuron_variance), 
+                          labeller = label_bquote(rows=Var[between]==.(between_neuron_variance), cols = Var[within]==.(within_neuron_variance)))
+  plt <- plt + labs(x = "Amplitude or Frequency", y=if(cumulative)"Cumulative Probability" else "Probability Density")
+  plt <- plt + theme(legend.title = element_blank())
+  plt <- plt + theme(strip.text.x = element_text(size = 11), strip.text.y =  element_text(size = 11))
   return(plt)
 }
 
 
+show_treatment_effect_and_variance_difference <- function(marginalize_neurons = FALSE, cumulative = FALSE,...){
+  
+
+  
+  no_treatment_effect <- gen_unpaired_data(treatment_effect = 0,
+                                           control_within_neuron_sd = 1,
+                                           intervention_within_neuron_sd = 1,
+                                           ...)
+  no_treatment_effect$type = "No Difference"
+  treatment_effect <- gen_unpaired_data(treatment_effect = 2,
+                                        control_within_neuron_sd = 1,
+                                        intervention_within_neuron_sd = 1,
+                                        ...)
+  treatment_effect$type = "Different Means"
+  variance_effect <- gen_unpaired_data(treatment_effect = 0,
+                                       control_within_neuron_sd = 1,
+                                       intervention_within_neuron_sd = 3,
+                                       ...)
+  variance_effect$type = "Different Standard Deviation"
+  
+  longform_datasets = rbind(no_treatment_effect, treatment_effect, variance_effect)
+  
+  longform_datasets$type <- factor(longform_datasets$type, c("No Difference", "Different Means", "Different Standard Deviation"))
+  
+  plt <- ggplot(data = longform_datasets, aes(x = dependant, color = group))
+  
+  if (marginalize_neurons && !cumulative){
+    plt <- plt + geom_density()
+  }else if (marginalize_neurons && cumulative){
+    plt <- plt + stat_ecdf(geom="step")
+  }else{
+    for (neuron in unique(longform_datasets$neuron_id)){
+      plt <- plt + geom_density(data = longform_datasets[longform_datasets$neuron_id == neuron,])
+    }
+  }
+  plt <- plt + facet_grid(cols = vars(type), labeller = label_value)
+  plt <- plt + theme(legend.title = element_blank(), panel.spacing.x = unit(4,"mm"))
+  plt <- plt + labs(x = "Amplitude or Frequency", y = "Probability Density")
+}
+  
+
+figure1 <- show_treatment_effect_and_variance_difference(n_control_neurons = 5, n_intervention_neurons = 5)
+
+dat <- gen_gridded_dataset_draws(n_control_neurons = 6, n_intervention_neurons = 6, treatment_effect = 0)
+figure2 <- plot_gridded_dataset_draws(dat, FALSE)
+figure3 <- plot_gridded_dataset_draws(dat, TRUE, TRUE)
+print(figure3)
 #Make some figures of unpaired datasets with no treatment effect
 dat <- gen_gridded_dataset_draws(treatment_effect = 0)
 unmarginalized <- plot_gridded_dataset_draws(dat, FALSE)
@@ -91,3 +140,6 @@ paired_dat <- gen_gridded_dataset_draws(n_neurons = 3, treatment_effect = 0, pai
 paired_unmarginalized <- plot_gridded_dataset_draws(paired_dat, FALSE , paired = T)
 paired_cumulative     <- plot_gridded_dataset_draws(paired_dat, TRUE, TRUE, paired = T)
 paired_marginalized   <- plot_gridded_dataset_draws(paired_dat, TRUE, FALSE, paired = T)
+
+
+

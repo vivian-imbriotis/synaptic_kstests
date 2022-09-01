@@ -19,7 +19,7 @@ DEFAULT_WITHIN_NEURON_SD <- 0.61
 #' @param n_intervention_neurons The number of neurons in the intervention group
 #' @param samples_per_neuron The number of times each neuron is sampled / the number of events per neuron
 #'
-#' @return A dataframe with the columns dependant (i.e. the frequency or amplitude), group ('Intervention' or 'Control') and neuron_id (a factor level)
+#' @return A dataframe with the columnnames dependant (i.e. the frequency or amplitude), group ('Intervention' or 'Control') and neuron_id (a factor level)
 gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, 
                               control_group_interneuron_sd      = DEFAULT_INTERNEURON_SD, 
                               intervention_group_interneuron_sd = DEFAULT_INTERNEURON_SD, 
@@ -175,14 +175,20 @@ is_ks_test_positive <- function(dat, alpha = 0.05){
 #'
 #' @return bool
 
-is_lmer_test_positive <- function(dat, alpha = 0.05, suppress = FALSE){
+is_lmer_test_positive <- function(dat, alpha = 0.05, suppress = FALSE, paired_formula = FALSE){
   if (suppress){
     return(suppressMessages(is_lmer_test_positive(dat,alpha)))
   }
+  if(paired_formula){
+    #Include the variance between the means of neurons in the intervenion vs control group as a random effect
+    model_h1 <- lme4::lmer(dependant ~ group + (1|neuron_id) + (1|neuron_id:group))
+    model_h0 <- lme4::lmer(dependant ~  (1|neuron_id) + (1|neuron_id:group))
+  }else{
   #Create a mixed model, then create a mixed model with a dropped term, then compare
-  model_h1 <- lme4::lmer(dependant ~ group + (1|neuron_id), data = dat, REML = FALSE)
-  model_h0 <- lme4::lmer(dependant ~ (1|neuron_id),         data = dat, REML = FALSE)
-  
+    model_h1 <- lme4::lmer(dependant ~ group + (1|neuron_id), data = dat, REML = FALSE)
+    model_h0 <- lme4::lmer(dependant ~ (1|neuron_id),         data = dat, REML = FALSE)
+  }
+    
   res <- anova(model_h1, model_h0)
   #get the p-value and compare to alpha
   lmer_positive <- (res$`Pr(>Chisq)`[2] < alpha)
