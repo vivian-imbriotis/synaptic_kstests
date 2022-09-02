@@ -83,10 +83,10 @@ check_test_performances_while_varying_two_data_parameters <- function(
   #needs to be evenly spaced, we're going to do the best we can to match the user's request if that's on the xaxis
   if(x_axis=="number_of_neurons" || y_axis=="number_of_neurons"){
     if(x_axis=="number_of_neurons"){
-      min_neurons <- max(2, x_axis_min)
+      min_neurons <- max(4, x_axis_min)
       max_neurons <- min(x_axis_max, (total_sample_size %/% 2))
     }else{
-      min_neurons <- max(2, y_axis_min)
+      min_neurons <- max(4, y_axis_min)
       max_neurons <- min(y_axis_max, (total_sample_size %/% 2))
     }
     by <- (max_neurons - min_neurons) %/% grid_frequency
@@ -128,7 +128,7 @@ check_test_performances_while_varying_two_data_parameters <- function(
       control_group_total_variance <- residual_var + between_neuron_var
       treatment_effect <- effect_size * sqrt(control_group_total_variance) #Inverting the formula for glass's delta
 
-      #Build our list of arguments to our data-generating function
+      #Build our list of arguments to our data-generating functionS
       args <- list()
       args$n_samples <- bootstrap_samples
       args$samples_per_neuron <- events_per_neuron
@@ -143,8 +143,8 @@ check_test_performances_while_varying_two_data_parameters <- function(
         args$within_neuron_sd <- sqrt(within_neuron_var)
         args$interneuron_sd <- sqrt(between_neuron_var)
       }else{    #The unpaired case
-        args$n_control_neurons      <- number_of_neurons
-        args$n_intervention_neurons <- number_of_neurons
+        args$n_control_neurons      <- number_of_neurons %/% 2 + (number_of_neurons %% 2)
+        args$n_intervention_neurons <- number_of_neurons %/% 2
         
         args$control_group_interneuron_sd      <- sqrt(between_neuron_var)
         args$intervention_group_interneuron_sd <- sqrt(between_neuron_var)
@@ -153,10 +153,7 @@ check_test_performances_while_varying_two_data_parameters <- function(
       }
       
       #Generate a lot of datasets with the given parameters!!
-      # args$saveplot <- T
-      # args$filename <- paste(x_axis,"=",x,y_axis,"=",y,"FALSE")
       fpr <- do.call(get_fpr, args)
-      # args$filename <- paste(x_axis,"=",x,y_axis,"=",y, "TRUE")
       pow <- do.call(get_power,args)
       
       record[nrow(record) + 1,] <- list(x, y, "KS Test", "False Positive Rate", fpr["lower_CI","ks"])
@@ -320,14 +317,14 @@ plot_heatmaps <- function(...){
 #                                prop_residual_variance_between_pairs=0.05)
 
 
-if(TRUE){
+if(FALSE){
   #MAKE SOME UNPAIRED FIGURES
   # effect_size_var_ratio <- plot_heatmaps(x_axis = "effect_size", y_axis = "proportion_explainable_variance", number_of_neurons = 100)
-  effect_size_interv_ctrl <- plot_heatmaps(x_axis = "effect_size", y_axis = "intervention_variance_ratio", 
-                                           y_axis_min=0.5, y_axis_max=1.5, proportion_explainable_variance = 0)
-
-  Nn_var_ratio <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "proportion_explainable_variance", total_sample_size = 100,
-                                x_axis_min = 2, x_axis_max = 20)
+  # effect_size_interv_ctrl <- plot_heatmaps(x_axis = "effect_size", y_axis = "intervention_variance_ratio", 
+  #                                          y_axis_min=0.5, y_axis_max=1.5, proportion_explainable_variance = 0)
+  # 
+  # Nn_var_ratio <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "proportion_explainable_variance", total_sample_size = 100,
+  #                               x_axis_min = 2, x_axis_max = 20)
   # Nn_interv_ctrl <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "intervention_variance_ratio", y_axis_min=0.5, y_axis_max=1.5)
   
   #MAKE 

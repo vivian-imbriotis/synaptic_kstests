@@ -123,12 +123,7 @@ show_treatment_effect_and_variance_difference <- function(marginalize_neurons = 
 }
   
 
-figure1 <- show_treatment_effect_and_variance_difference(n_control_neurons = 5, n_intervention_neurons = 5)
 
-dat <- gen_gridded_dataset_draws(n_control_neurons = 6, n_intervention_neurons = 6, treatment_effect = 0)
-figure2 <- plot_gridded_dataset_draws(dat, FALSE)
-figure3 <- plot_gridded_dataset_draws(dat, TRUE, TRUE)
-print(figure3)
 #Make some figures of unpaired datasets with no treatment effect
 dat <- gen_gridded_dataset_draws(treatment_effect = 0)
 unmarginalized <- plot_gridded_dataset_draws(dat, FALSE)

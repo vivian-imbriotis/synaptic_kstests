@@ -3,3 +3,5 @@
 
 *.png
 .Rproj.user
+datasets/
+
