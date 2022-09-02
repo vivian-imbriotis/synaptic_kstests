@@ -13,8 +13,11 @@ figure4 <- plot_gridded_dataset_draws(dat, TRUE, TRUE)
 effect_size_interv_ctrl <- plot_heatmaps(x_axis = "effect_size", y_axis = "intervention_variance_ratio",
                                          y_axis_min=0.5, y_axis_max=1.5, proportion_explainable_variance = 0)
 
-Nn_var_ratio <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "proportion_explainable_variance", total_sample_size = 100,
+Nn_var_ratio_100samples <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "proportion_explainable_variance", total_sample_size = 100,
                               x_axis_min = 2, x_axis_max = 20)
+
+Nn_var_ratio_1000samples <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "proportion_explainable_variance", total_sample_size = 1000,
+                                         x_axis_min = 2, x_axis_max = 20)
 
 figure2 <- effect_size_interv_ctrl$ks_only
 
@@ -42,4 +45,4 @@ for (fig in 1:length(figures)){
   }
 }
 
-save(figures, dat, fig_width, fig_heights, effect_size_interv_ctrl, Nn_var_ratio, "figures.RData")
+save(figures, dat, fig_width, fig_heights, effect_size_interv_ctrl, Nn_var_ratio_100samples, Nn_var_ratio_1000samples, file="figures.RData")

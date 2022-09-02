@@ -1,4 +1,5 @@
-
+require(lme4)
+library(ggplot2)
 DEFAULT_INTERNEURON_SD <- 0.34
 DEFAULT_WITHIN_NEURON_SD <- 0.61
 
