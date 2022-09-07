@@ -53,14 +53,18 @@ ground_truths[,"value"] <- values
 ground_truths[,"is_model"] <- ground_truths$statistic %in% colnames(record)[3:6]
 
 
-
-plt <- ggplot(data = long, aes(x = statistic, y=value)) + geom_violin(aes(color = is_model))
-
-
-plt <- plt + geom_point(data = ground_truths, aes(x = statistic, y = value))
+plt <- ggplot(data = subset(long, is_model==T), aes(x = statistic, y=value)) + geom_violin(fill = "#56B4E9", color="black", scale = "width")
 
 
-print(plt)
+plt <- plt + geom_point(data = subset(ground_truths, is_model==T), aes(x = statistic, y = value))
+
+plt <- plt + scale_x_discrete(labels = c(expression(ATE), expression(Var[Between~Neurons]), expression(Intercept), expression(Var[Within~Neurons])))
+
+plt <- plt + labs(x="Parameter", y="Value")
+
+plt <- plt + theme(axis.text = element_text(size = 11))
+
+ggsave("supplimentary1.pdf", plt, device = "pdf")
 
 fpr = sum(record$pval < 0.01) / length(record$pval)
 print(fpr)

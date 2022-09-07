@@ -84,8 +84,8 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1,
 #'
 #' @inheritSection gen_unpaired_data return
 
-gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuron_sd = 2, within_neuron_sd=2, residual_interneuron_sd = 0.5,
-                              n_neurons=10, samples_per_neuron=100) {
+gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuron_sd = 2, within_neuron_sd=2, 
+                            residual_interneuron_sd = 0.5, n_neurons=10, samples_per_neuron=100) {
   
   intervention_group_mean <- control_group_mean + treatment_effect
   
@@ -107,6 +107,7 @@ gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuro
   #Repeat for the intervention group
   neuron_effect <- rep(intervention_grp_neuron_means, each = samples_per_neuron)
   sample_effect <- rnorm(n_neurons*samples_per_neuron, mean=0, sd = within_neuron_sd)
+  
   intervention_group_samples <- neuron_effect + sample_effect + intervention_group_mean
   
   #Glue control and intervention groups together
@@ -134,7 +135,7 @@ gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuro
 #'
 #' @return ggplot object
 
-plot_data <- function(dat, colorby = "group"){
+plot_data <- function(dat, colorby = "group", binwidth = 0.2){
   #Plot each neuron's empirical PDF (unfilled histogram) colored by that neuron's group
   if (colorby=="group"){
   plt <- ggplot(data=dat, aes(x = dependant, color = group))
@@ -146,7 +147,7 @@ plot_data <- function(dat, colorby = "group"){
   for (grp in unique(dat$group)){
     grp_data <- subset(dat, group==grp)
     for (id in unique(grp_data$neuron_id)){
-      plt <- plt + geom_freqpoly(data = subset(grp_data,neuron_id==id), binwidth = 0.2)
+      plt <- plt + geom_freqpoly(data = subset(grp_data,neuron_id==id), binwidth = binwidth)
     }
   }
   return(plt)
@@ -178,12 +179,12 @@ is_ks_test_positive <- function(dat, alpha = 0.05){
 
 is_lmer_test_positive <- function(dat, alpha = 0.05, suppress = FALSE, paired_formula = FALSE){
   if (suppress){
-    return(suppressMessages(is_lmer_test_positive(dat,alpha)))
+    return(suppressMessages(is_lmer_test_positive(dat,alpha, paired_formula = paired_formula)))
   }
   if(paired_formula){
     #Include the variance between the means of neurons in the intervenion vs control group as a random effect
-    model_h1 <- lme4::lmer(dependant ~ group + (1|neuron_id) + (1|neuron_id:group))
-    model_h0 <- lme4::lmer(dependant ~  (1|neuron_id) + (1|neuron_id:group))
+    model_h1 <- lme4::lmer(dependant ~ group + (1+group|neuron_id), data = dat, REML = FALSE)
+    model_h0 <- lme4::lmer(dependant ~  (1+group|neuron_id), data = dat, REML = FALSE)
   }else{
   #Create a mixed model, then create a mixed model with a dropped term, then compare
     model_h1 <- lme4::lmer(dependant ~ group + (1|neuron_id), data = dat, REML = FALSE)
@@ -232,13 +233,13 @@ get_fpr <- function(n_samples, saveplot = FALSE, suppress=FALSE,
     if (is_ks_test_positive(dat)){
       ks_positives <- ks_positives + 1
     }
-    if (is_lmer_test_positive(dat, suppress=suppress)){
+    if (is_lmer_test_positive(dat, suppress=suppress, paired_formula = paired)){
       lmer_positives <- lmer_positives + 1
     }
   }
   #Get point estimates and CIs
-  ks_fpr   <- c(ks_positives / n_samples, c(prop.test(ks_positives,n_samples)$conf.int))
-  lmer_fpr <- c(lmer_positives / n_samples, c(prop.test(lmer_positives,n_samples)$conf.int))
+  ks_fpr   <- c(ks_positives / n_samples, c(binom.test(ks_positives,n_samples)$conf.int))
+  lmer_fpr <- c(lmer_positives / n_samples, c(binom.test(lmer_positives,n_samples)$conf.int))
   return(data.frame(ks=ks_fpr,lmer=lmer_fpr, row.names = c("value", "lower_CI", "upper_CI")))
 }
 
@@ -267,11 +268,11 @@ get_power <- function(n_samples, saveplot = FALSE, paired = FALSE, filename = "d
     if (is_ks_test_positive(dat)){
       ks_positives <- ks_positives + 1
     }
-    if (is_lmer_test_positive(dat, suppress=suppress)){
+    if (is_lmer_test_positive(dat, suppress=suppress, paired_formula = paired)){
       lmer_positives <- lmer_positives + 1
     }
   }
-  ks_pow   <- c(ks_positives / n_samples, c(prop.test(ks_positives,n_samples)$conf.int))
-  lmer_pow <- c(lmer_positives / n_samples, c(prop.test(lmer_positives,n_samples)$conf.int))
+  ks_pow   <- c(ks_positives / n_samples, c(binom.test(ks_positives,n_samples)$conf.int))
+  lmer_pow <- c(lmer_positives / n_samples, c(binom.test(lmer_positives,n_samples)$conf.int))
   return(data.frame(ks=ks_pow,lmer=lmer_pow, row.names = c("value", "lower_CI", "upper_CI")))
 }

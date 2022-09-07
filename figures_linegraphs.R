@@ -189,7 +189,7 @@ plot_test_performances_against_varying_data_parameter <- function(varying_param 
 # r <- plot_test_performances_against_varying_data_parameter("intraneuron variance", param_values = seq(from=0.05, to=0.95, by = 0.1), n_samples = 100, intervention_group_interneuron_sd = sqrt(0.05), control_group_interneuron_sd= sqrt(0.05),
 #                                                       n_neurons = 2, samples_per_neuron = 60, treatment_effect = 1, suppress = TRUE)
 
-p <- plot_test_performances_against_varying_data_parameter("intervention group variance", param_values = seq(0.8,1.2,by=0.1), treatment_effect = 1, control_within_neuron_sd = 1,
-                                                           n_neurons = 200, samples_per_neuron = 100, suppress = TRUE)
+# p <- plot_test_performances_against_varying_data_parameter("intervention group variance", param_values = seq(0.8,1.2,by=0.1), treatment_effect = 1, control_within_neuron_sd = 1,
+#                                                            n_neurons = 200, samples_per_neuron = 100, suppress = TRUE)
 
 # beepr::beep()

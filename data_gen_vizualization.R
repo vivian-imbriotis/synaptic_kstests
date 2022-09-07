@@ -1,4 +1,6 @@
 source("data_generation.r")
+library(ggplot2)
+library(patchwork)
 
 set.seed(0)
 
@@ -123,18 +125,122 @@ show_treatment_effect_and_variance_difference <- function(marginalize_neurons = 
 }
   
 
+show_ideal_vs_realistic_paired_datasets <- function(){
+  
+  ideal <- gen_paired_data(interneuron_sd = 1, within_neuron_sd = 0.2, n_neurons = 3, 
+                           samples_per_neuron = 5000,residual_interneuron_sd = 0)
+  
+  realistic <- gen_paired_data(interneuron_sd = 0.8, within_neuron_sd = 0.2, n_neurons = 3, 
+                               samples_per_neuron = 5000,residual_interneuron_sd = 0.3)
+  
+  ideal$type <- "Idealised"
+  realistic$type <- "Realistic"
+  
 
-#Make some figures of unpaired datasets with no treatment effect
-dat <- gen_gridded_dataset_draws(treatment_effect = 0)
-unmarginalized <- plot_gridded_dataset_draws(dat, FALSE)
-cumulative     <- plot_gridded_dataset_draws(dat, TRUE, TRUE)
-marginalized   <- plot_gridded_dataset_draws(dat, TRUE, FALSE)
+  
+  alldat <- rbind(ideal, realistic)
+  
+  neuron_mean_differences <- list()
+  
+  for (set in c("Idealised", "Realistic")){
+    s <- subset(alldat, type==set)
+    cntrl <- subset(s, group=="Control")
+    neuron_cntrl_means <- tapply(cntrl$dependant, cntrl$neuron_id, mean)
+    
+    inter <- subset(s,group=="Intervention")
+    neuron_inter_means <- tapply(inter$dependant, inter$neuron_id, mean)
+    
+    d <- data.frame(neuron_cntrl_means = neuron_cntrl_means, 
+                    neuron_inter_means = neuron_inter_means,
+                    neuron_id = unique(s$neuron_id),
+                    type = set)
+    
+    neuron_mean_differences[[length(neuron_mean_differences)+1]] <- d
+  }
+  neuron_mean_differences <- do.call(rbind, neuron_mean_differences)
 
-#Make some figures of paired datasets with no treatment effect
-paired_dat <- gen_gridded_dataset_draws(n_neurons = 3, treatment_effect = 0, paired = T, residual_interneuron_sd = 0.2)
-paired_unmarginalized <- plot_gridded_dataset_draws(paired_dat, FALSE , paired = T)
-paired_cumulative     <- plot_gridded_dataset_draws(paired_dat, TRUE, TRUE, paired = T)
-paired_marginalized   <- plot_gridded_dataset_draws(paired_dat, TRUE, FALSE, paired = T)
+  
+  plt <- ggplot(alldat, aes(x=dependant, color = neuron_id, linetype = group)) + geom_density()
+  plt <- plt + geom_curve(data = neuron_mean_differences, aes(x = neuron_cntrl_means, xend = neuron_inter_means, y = 2, yend=2), 
+                          linetype = "solid",
+                          curvature = -0.2,
+                          size = 1,
+                          arrow = arrow(length=unit(0.3,'cm'), ends="last", type="closed"),
+                          show.legend = F)
+  plt <- plt + facet_grid(rows = vars(type))
+  
+  plt <- plt + labs(x = "Amplitude / Frequency", y = "Probability Density", color = "Neuron", linetype = "State")
+  
+  
+                           
+  return(plt)
+}
 
+
+show_sources_of_variance_in_paired_datasets <- function(){
+  
+  all_low <- gen_paired_data(n_neurons = 3, within_neuron_sd = 0.2, 
+                             treatment_effect = 0, 
+                             interneuron_sd = 0.2, 
+                             residual_interneuron_sd = 0.1,
+                             samples_per_neuron = 5000)
+  
+  within <- gen_paired_data(n_neurons = 3, within_neuron_sd = 0.5, 
+                                       treatment_effect = 0, 
+                                       interneuron_sd = 0.2, 
+                                       residual_interneuron_sd = 0.1,
+                                       samples_per_neuron = 5000)
+  
+  between <- gen_paired_data(n_neurons = 3, within_neuron_sd = 0.2, 
+                                        treatment_effect = 0, 
+                                        interneuron_sd = 2, 
+                                        residual_interneuron_sd = 0.1,
+                                        samples_per_neuron = 5000)
+  
+  pairmeans <- gen_paired_data(n_neurons = 3, within_neuron_sd = 0.2, 
+                                           treatment_effect = 0, 
+                                           interneuron_sd = 0.2, 
+                                           residual_interneuron_sd = 1,
+                                           samples_per_neuron = 5000)
+  
+  all_low$type = "low"
+  within$type = "within"
+  between$type = "between"
+  pairmeans$type = "pairmeans"
+  
+  facetnames <- c(low="Low~Var", 
+                     within="High~Var[Residual]", 
+                     between="High~Var[Between~Neurons]",
+                     pairmeans="High~Var[Pair~Means]"
+                     )
+  facetlabeller <- as_labeller(facetnames, label_parsed)
+  
+  
+  alldat <- rbind(all_low, within, between, pairmeans)
+  alldat$type <- factor(alldat$type, levels = c("low","within","between","pairmeans"))
+  
+  
+  plt <- ggplot(alldat, aes(x=dependant, color = neuron_id, linetype = group)) + geom_density()
+  plt <- plt + facet_wrap(facets = vars(type), labeller = facetlabeller)
+  plt <- plt + labs(x="Amplitude/Frequency", y="Probability Density", linetype = "State", color = "Neuron")
+  plt <- plt + theme(strip.text.x = element_text(size = 11), strip.text.y =  element_text(size = 11))
+  return(plt)
+}
+
+
+
+
+# #Make some figures of unpaired datasets with no treatment effect
+# dat <- gen_gridded_dataset_draws(treatment_effect = 0)
+# unmarginalized <- plot_gridded_dataset_draws(dat, FALSE)
+# cumulative     <- plot_gridded_dataset_draws(dat, TRUE, TRUE)
+# marginalized   <- plot_gridded_dataset_draws(dat, TRUE, FALSE)
+# 
+# #Make some figures of paired datasets with no treatment effect
+# paired_dat <- gen_gridded_dataset_draws(n_neurons = 3, treatment_effect = 0, paired = T, residual_interneuron_sd = 0.2)
+# paired_unmarginalized <- plot_gridded_dataset_draws(paired_dat, FALSE , paired = T)
+# paired_cumulative     <- plot_gridded_dataset_draws(paired_dat, TRUE, TRUE, paired = T)
+# paired_marginalized   <- plot_gridded_dataset_draws(paired_dat, TRUE, FALSE, paired = T)
+# 
 
 

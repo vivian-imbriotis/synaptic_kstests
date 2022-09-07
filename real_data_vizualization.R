@@ -1,4 +1,5 @@
 source("data_generation.R")
+require(gridExtra)
 require(lme4)
 
 
@@ -37,10 +38,46 @@ plot_real_data <- function(data, marginalize = T){
   return(plt)
 }
 
+get_var_decomp_from_model <- function(model){
+  
+  variances <- VarCorr(model)
+  variances <- as.data.frame(variances)
+  
+  between_cell_var <- variances$vcov[[1]]
+  residual_var     <- variances$vcov[[2]]
+  total_var        <- between_cell_var + residual_var
+  
+  return(list(Var_between_neurons = between_cell_var,
+              Var_residual = residual_var,
+              Var_proportion = between_cell_var / total_var))
+}
 
 amp_model1 <- lme4::lmer(ln ~ gt + (1|cellid), data = pvi_amp)
 amp_model2 <- lme4::lmer(ln ~ gt + (1|cellid), data = dgg_amp)
 
+freq_model1 <- lme4::lmer(ln~gt + (1|cellid), data = pvi_fre)
+freq_model2 <- lme4::lmer(ln~gt + (1|cellid), data = dgg_fre)
+
+amp_model1_vars <- get_var_decomp_from_model(amp_model1)
+amp_model1_vars$area <- "Parvalbumin+ interneurons"
+
+amp_model2_vars <- get_var_decomp_from_model(amp_model2)
+amp_model2_vars$area <- "Dentate Gyrus Granule Cells"
+
+amp_model1_vars$dat_type <- "ln(Amplitude)"
+amp_model2_vars$dat_type <- "ln(Amplitude)"
+
+freq_model1_vars <- get_var_decomp_from_model(freq_model1)
+freq_model1_vars$area <- "Parvalbumin+ interneurons"
+
+freq_model2_vars <- get_var_decomp_from_model(freq_model2)
+freq_model2_vars$area <- "Dentate Gyrus Granule Cells"
+
+freq_model1_vars$dat_type <- "ln(Frequency)"
+freq_model2_vars$dat_type <- "ln(Frequency)"
+
+variance_decomp <- rbind(amp_model1_vars, amp_model2_vars, freq_model1_vars, freq_model2_vars)
+rownames(variance_decomp) <- 1:4
+variance_decomp <- variance_decomp[,c(4,5,1,2,3)]
 
 
-print(VarCorr(amp_model1))
