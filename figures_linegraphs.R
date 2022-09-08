@@ -3,10 +3,6 @@ library(ggplot2)
 library(patchwork)
 require(beepr)
 
-ALPHA = 0.05
-
-HALF_UNIT_VARIANCE_SD <- sqrt(2)/2
-
 
 #' Check test performance while varying a single parameter
 #' 
@@ -31,9 +27,8 @@ HALF_UNIT_VARIANCE_SD <- sqrt(2)/2
 #' @return data.frame object
 check_test_performances_while_varying_data_parameter <- function(varying_param = "interneuron variance", 
                                                                  param_values = seq(from=0,to=1,by=0.1),
-                                                                 alpha = ALPHA,
+                                                                 alpha = 0.05,
                                                                  n_samples = 50,
-                                                                 reserve_plots=FALSE,
                                                                  power_only = F,
                                                                  fpr_only = F,
                                                                  n_neurons = 200,
@@ -41,11 +36,7 @@ check_test_performances_while_varying_data_parameter <- function(varying_param =
                                                                  ...){
 
   if(fpr_only && power_only){stop()}
-  
-  if(reserve_plots){
-    dir.create("datasets", showWarnings = FALSE)
-  }
-  
+
   n_control_neurons <- n_neurons %/% 2 + n_neurons %% 2
   n_intervention_neurons <- n_neurons %/% 2
   
@@ -82,10 +73,10 @@ check_test_performances_while_varying_data_parameter <- function(varying_param =
     #Set the variable parameter(s)
     if (varying_param == "interneuron variance"){
       if(paired){
-        kwargs["interneuron_sd"] <- sqrt(param)
+        kwargs["between_neuron_sd"] <- sqrt(param)
       }else{        
-        kwargs["control_group_interneuron_sd"] <- sqrt(param)
-        kwargs["intervention_group_interneuron_sd"] <- sqrt(param)}
+        kwargs["control_between_neuron_sd"] <- sqrt(param)
+        kwargs["intervention_between_neuron_sd"] <- sqrt(param)}
     }else if(varying_param=="intraneuron variance"){
         kwargs["within_neuron_sd"] <- sqrt(param)
     }else if(varying_param=="effect size"){
@@ -152,7 +143,7 @@ plot_test_performances_against_varying_data_parameter <- function(varying_param 
     record$test_stat_value <- record$test_stat_value / kwargs$treatment_effect
   }else if(varying_param=="effect size"){
     xlabel<- "Effect size (Cohen's D)"
-    record$test_stat_value <- record$test_stat_value / sqrt(kwargs$control_group_interneuron_sd**2 + kwargs$within_neuron_sd**2)
+    record$test_stat_value <- record$test_stat_value / sqrt(kwargs$control_between_neuron_sd**2 + kwargs$within_neuron_sd**2)
     
   }else if(varying_param=="intervention group variance"){
     xlabel <- "Variance between intervention group neurons (%Variance between controls)"
@@ -168,28 +159,3 @@ plot_test_performances_against_varying_data_parameter <- function(varying_param 
 
   return(plt) 
 }
-
-# interneuron <- plot_test_performances_against_varying_data_parameter("interneuron variance", param_values = seq(from=0.1,to=2.1,by=0.2),
-#                                                                      samples_per_param_value = 1000, n_neurons = 20, reserve_plots=TRUE)
-# intraneuron <- plot_test_performances_against_varying_data_parameter("intraneuron variance", samples_per_param_value = 100)
-
-
-# plt <- plot_test_performances_against_varying_data_parameter(varying_param = "interneuron variance", 
-#                                                              param_values = seq(0,0.6,0.1), 
-#                                                              samples_per_param_value = 300)
-
-# effect_size <- plot_test_performances_against_varying_data_parameter("effect size", n_samples = 50, reserve_plots = F,
-#                                                                      power_only = F, param_values = seq(from=0,to=1,by=0.2),
-#                                                                      n_neurons = 500, samples_per_neuron = 10,
-#                                                                      control_group_interneuron_sd = 0.711,
-#                                                                      intervention_group_interneuron_sd = 0.711,
-#                                                                      within_neuron_sd = 0.711)
-# print(effect_size)
-
-# r <- plot_test_performances_against_varying_data_parameter("intraneuron variance", param_values = seq(from=0.05, to=0.95, by = 0.1), n_samples = 100, intervention_group_interneuron_sd = sqrt(0.05), control_group_interneuron_sd= sqrt(0.05),
-#                                                       n_neurons = 2, samples_per_neuron = 60, treatment_effect = 1, suppress = TRUE)
-
-# p <- plot_test_performances_against_varying_data_parameter("intervention group variance", param_values = seq(0.8,1.2,by=0.1), treatment_effect = 1, control_within_neuron_sd = 1,
-#                                                            n_neurons = 200, samples_per_neuron = 100, suppress = TRUE)
-
-# beepr::beep()

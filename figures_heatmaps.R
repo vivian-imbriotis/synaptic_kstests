@@ -2,17 +2,15 @@ source("data_generation.R")
 library(ggplot2)
 library(patchwork)
 
-set.seed(0)
-
 DEFAULT_NEURONS = 20
 DEFAULT_RESIDUAL_VARIANCE = 0.34
-DEFAULT_EXPLAINABLE_VARIANCE = 0.61
+DEFAULT_WITHIN_GROUP_VARIANCE = 0.61
 DEFAULT_EFFECT_SIZE = 0.5
 
 #' Check test performances while varying two data parameters
 #'
 #' @param x_axis One of "number_of_neurons" or "effect_size"
-#' @param y_axis One of 'proportion_explainable_variance' or 'intervention_variance_ratio'
+#' @param y_axis One of 'proportion_within_group_variance' or 'intervention_variance_ratio'
 #' @param x_axis_min The minimum value of the x-axis variate
 #' @param x_axis_max The maximum value of the y-axis variate
 #' @param y_axis_min  The minimum value of the x-axis variate
@@ -30,7 +28,7 @@ DEFAULT_EFFECT_SIZE = 0.5
 #' simply the variance between observations from a particular neuron.
 #' @param default_neurons If number of neurons does not vary, how many neurons should be in each dataset?
 #' @param default_residual_variance If the residual/explainable variance ratio does not vary, set the residual variance
-#' @param default_explainable_variance If the residual/explainable variance ratio does not vary, set the explainable variance
+#' @param DEFAULT_WITHIN_GROUP_VARIANCE If the residual/explainable variance ratio does not vary, set the explainable variance
 #' @param default_treatment_effect If the effect size does not vary, set the treatment effect
 #'
 #' @return
@@ -39,7 +37,7 @@ DEFAULT_EFFECT_SIZE = 0.5
 #' @examples
 check_test_performances_while_varying_two_data_parameters <- function(
                                  x_axis  = "number_of_neurons", 
-                                 y_axis  = "proportion_explainable_variance",
+                                 y_axis  = "proportion_within_group_variance",
                                  x_axis_min = 0,
                                  x_axis_max = 0.8,
                                  y_axis_min = 0.05,
@@ -49,9 +47,9 @@ check_test_performances_while_varying_two_data_parameters <- function(
                                  bootstrap_samples = 200,
                                  grid_frequency = 10,
                                  paired = FALSE,
-                                 prop_explainable_variance_between_pairs = 0.2,
-                                 number_of_neurons = DEFAULT_NEURONS,
-                                 proportion_explainable_variance = DEFAULT_EXPLAINABLE_VARIANCE / (DEFAULT_EXPLAINABLE_VARIANCE+DEFAULT_RESIDUAL_VARIANCE),
+                                 prop_within_group_variance_between_pairs = 0.2,
+                                 number_of_neurons = 20,
+                                 proportion_within_group_variance = DEFAULT_WITHIN_GROUP_VARIANCE / (DEFAULT_WITHIN_GROUP_VARIANCE+DEFAULT_RESIDUAL_VARIANCE),
                                  effect_size = DEFAULT_EFFECT_SIZE,
                                  intervention_variance_ratio = 1){
   record <- data.frame(x_axis=numeric(), y_axis=numeric(), test=character(), test_stat=character(), test_stat_value=numeric())
@@ -59,7 +57,7 @@ check_test_performances_while_varying_two_data_parameters <- function(
   #Start with some error checking. Both the x and y axis have to be from the list of data-generating parameters
   #that are allowed to vary. intervention_variance_ratio cannot currently vary in the paired case (within a neuron
   #the mean and variance are equal, regardless of if its in the intervention or control state, only the mean can change).
-  #Similarly, the prop_explainable_variance_between_pairs can't change in the unpaired case!
+  #Similarly, the prop_within_group_variance_between_pairs can't change in the unpaired case!
   
   if(!(x_axis %in% names(axislabels))){
     stop(paste("x_axis must be set to one of the following:", toString(names(axislabels))))
@@ -67,7 +65,7 @@ check_test_performances_while_varying_two_data_parameters <- function(
   if(!(y_axis %in% names(axislabels))){
     stop(paste("y_axis must be set to one of the following:", toString(names(axislabels))))
   }
-  if("prop_explainable_variance_between_pairs"%in%c(x_axis,y_axis) && (!paired)){
+  if("prop_within_group_variance_between_pairs"%in%c(x_axis,y_axis) && (!paired)){
     stop(paste("Cannot vary variance between pairs in unpaired data. Did you mean to set paired=TRUE?"))
   }
   if("intervention_variance_ratio"%in%c(x_axis,y_axis) && paired){
@@ -107,16 +105,16 @@ check_test_performances_while_varying_two_data_parameters <- function(
       
       
       #Derive the variances in the dataset
-      explainable_var    <- total_variance * proportion_explainable_variance
-      residual_var       <- total_variance  - explainable_var
+      within_group_var    <- total_variance * proportion_within_group_variance
+      residual_var       <- total_variance  - within_group_var
       #If data are paired, residual variance is split up into unexplainable between_pair variance and unexplainable within_neuron variance
       if(paired){
-        paired_var <- explainable_var * prop_explainable_variance_between_pairs
-        between_neuron_var <- explainable_var - paired_var
+        paired_var <- within_group_var * prop_within_group_variance_between_pairs
+        between_neuron_var <- within_group_var - paired_var
         within_neuron_var <- residual_var
       }else{
         paired_var <- 0
-        between_neuron_var <- explainable_var
+        between_neuron_var <- within_group_var
         within_neuron_var <- residual_var
       }
       
@@ -130,7 +128,7 @@ check_test_performances_while_varying_two_data_parameters <- function(
       }
       
       #Derive the treatment effect from the effect size and the variances
-      control_group_total_variance <- residual_var + between_neuron_var + paired_var
+      control_group_total_variance <- residual_var + between_neuron_var + paired_var #law of total variance
       treatment_effect <- effect_size * sqrt(control_group_total_variance) #Inverting the formula for glass's delta
 
       #Build our list of arguments to our data-generating functionS
@@ -144,20 +142,21 @@ check_test_performances_while_varying_two_data_parameters <- function(
 
       if(paired){
         args$n_neurons <- number_of_neurons
-        args$residual_interneuron_sd <- sqrt(paired_var)
         args$within_neuron_sd <- sqrt(within_neuron_var)
-        args$interneuron_sd <- sqrt(between_neuron_var)
+        args$between_neuron_sd <- sqrt(between_neuron_var)
+        args$between_pairmeans_sd <- sqrt(paired_var)
+
       }else{    #The unpaired case
         args$n_control_neurons      <- number_of_neurons %/% 2 + (number_of_neurons %% 2)
         args$n_intervention_neurons <- number_of_neurons %/% 2
         
-        args$control_group_interneuron_sd      <- sqrt(between_neuron_var)
-        args$intervention_group_interneuron_sd <- sqrt(between_neuron_var)
+        args$control_between_neuron_sd      <- sqrt(between_neuron_var)
+        args$intervention_between_neuron_sd <- sqrt(between_neuron_var)
         args$control_within_neuron_sd <- sqrt(residual_var)
         args$intervention_within_neuron_sd <- intervention_variance_ratio * args$control_within_neuron_sd
       }
       
-      #Generate a lot of datasets with the given parameters!!
+      #Generate a lot of datasets with the given parameters and compute the fpr and power!
       fpr <- do.call(get_fpr, args)
       pow <- do.call(get_power,args)
       
@@ -176,16 +175,16 @@ check_test_performances_while_varying_two_data_parameters <- function(
 #'
 #' @inheritDotParams check_test_performance_while_varying_two_data_parameters
 #'
-#' @return list of ggplot objects, with names 'acceptibility', 'contour', 'raster'
-
-axislabels <- list()
-axislabels$effect_size <- expression(Effect~size~("Glass's"~Delta))
-axislabels$number_of_neurons <- expression(N[Neurons]~(Constant~sample~size))
-axislabels$proportion_explainable_variance <- expression(frac(Var[Between~neurons],Var[Total]))
-axislabels$intervention_variance_ratio <- expression(frac(Var[Intervention],Var[Control]))
-axislabels$prop_explainable_variance_between_pairs <- expression(frac(Var[Pair~means],Var[Between~groups]))
+#' @return list of ggplot objects, with names 'acceptibility', 'contour', 'raster', 'ks_only', and 'rastercolored'
 
 plot_heatmaps <- function(...){
+  
+  axislabels <- list()
+  axislabels$effect_size <- expression(Effect~size~("Glass's"~Delta))
+  axislabels$number_of_neurons <- expression(N[Neurons]~(Constant~sample~size))
+  axislabels$proportion_within_group_variance <- expression(frac(Var[Between~neurons],Var[Total]))
+  axislabels$intervention_variance_ratio <- expression(frac(Var[Intervention],Var[Control]))
+  axislabels$prop_within_group_variance_between_pairs <- expression(frac(Var[Pair~means],Var[Between~groups]))
   
   df <- check_test_performances_while_varying_two_data_parameters(...)
   
@@ -283,68 +282,4 @@ plot_heatmaps <- function(...){
   plots$ks_only <- ks_only
   plots$coloredraster <- coloredrasters
   return(plots)
-}
-
-# paired_effectsize <- plot_heatmaps(x_axis = "effect_size",
-#                                    x_axis_min = 0.2,
-#                                    x_axis_max = 0.8,
-#                                    y_axis = "prop_explainable_variance_between_pairs",
-#                                    y_axis_min = 0,
-#                                    y_axis_max = 1,
-#                                    number_of_neurons = 10,
-#                                    total_sample_size = 100,
-#                                    bootstrap_samples = 100,
-#                                    grid_frequency = 10,
-#                                    proportion_explainable_variance = 0.5,
-#                                    paired=TRUE)
-# 
-# paired_variances <- plot_heatmaps(x_axis = "proportion_explainable_variance",
-#                                   x_axis_min = 0.05,
-#                                   x_axis_max = 0.95,
-#                                   y_axis = "prop_explainable_variance_between_pairs",
-#                                   y_axis_min = 0,
-#                                   y_axis_max = 1,
-#                                   number_of_neurons = 10,
-#                                   total_sample_size = 100,
-#                                   bootstrap_samples = 100,
-#                                   grid_frequency = 10,
-#                                   paired=TRUE)
-# 
-# paired_var <- plot_heatmaps(x_axis = "effect_size",
-#                                x_axis_min = 0.05,
-#                                x_axis_max = 0.95,
-#                                y_axis = "proportion_explainable_variance",
-#                                y_axis_min = 0.05,
-#                                y_axis_max = 0.95,
-#                                number_of_neurons = 10,
-#                                total_sample_size = 100,
-#                                bootstrap_samples = 100,
-#                                grid_frequency = 10, paired=TRUE,
-#                                prop_explainable_variance_between_pairs=0.30)
-
-# paired_Nn<- plot_heatmaps(x_axis = "number_of_neurons",
-#                           x_axis_min = 4,
-#                           x_axis_max = 20,
-#                           y_axis = "prop_explainable_variance_between_pairs",
-#                           y_axis_min = 0.05,
-#                           y_axis_max = 0.95,
-#                           total_sample_size = 100,
-#                           bootstrap_samples = 100,
-#                           grid_frequency = 10, paired=TRUE,
-#                           prop_explainable_variance_between_pairs=0.30)
-
-
-# print((paired_effectsize$coloredraster | paired_variances$coloredraster) / (paired_var$coloredraster | plot_spacer()))
-
-if(FALSE){
-  #MAKE SOME UNPAIRED FIGURES
-  # effect_size_var_ratio <- plot_heatmaps(x_axis = "effect_size", y_axis = "proportion_explainable_variance", number_of_neurons = 100)
-  # effect_size_interv_ctrl <- plot_heatmaps(x_axis = "effect_size", y_axis = "intervention_variance_ratio", 
-  #                                          y_axis_min=0.5, y_axis_max=1.5, proportion_explainable_variance = 0)
-  # 
-  # Nn_var_ratio <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "proportion_explainable_variance", total_sample_size = 100,
-  #                               x_axis_min = 2, x_axis_max = 20)
-  # Nn_interv_ctrl <- plot_heatmaps(x_axis = "number_of_neurons", y_axis = "intervention_variance_ratio", y_axis_min=0.5, y_axis_max=1.5)
-  
-  #MAKE 
 }

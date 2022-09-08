@@ -12,8 +12,8 @@ DEFAULT_WITHIN_NEURON_SD <- 0.61
 #' 
 #' @param control_group_mean The mean of the control group
 #' @param treatment_effect The difference (in data units) between the intervention and control groups
-#' @param control_group_interneuron_sd  The standard deviation between neuronal means in the control group
-#' @param intervention_group_interneuron_sd The standard devaition between neuronal means in the intervention group
+#' @param control_between_neuron_sd  The standard deviation between neuronal means in the control group
+#' @param intervention_between_neuron_sd The standard devaition between neuronal means in the intervention group
 #' @param control_within_neuron_sd The standard deviation between different observations from the same neuron, when that neuron is is the control group
 #' @param intervention_within_neuron_sd The standard deviation between different observations from the same neruon, when that neuron is in the intervention group
 #' @param n_control_neurons The number of neurons in the control group
@@ -22,8 +22,8 @@ DEFAULT_WITHIN_NEURON_SD <- 0.61
 #'
 #' @return A dataframe with the columnnames dependant (i.e. the frequency or amplitude), group ('Intervention' or 'Control') and neuron_id (a factor level)
 gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1, 
-                              control_group_interneuron_sd      = DEFAULT_INTERNEURON_SD, 
-                              intervention_group_interneuron_sd = DEFAULT_INTERNEURON_SD, 
+                              control_between_neuron_sd      = DEFAULT_INTERNEURON_SD, 
+                              intervention_between_neuron_sd = DEFAULT_INTERNEURON_SD, 
                               control_within_neuron_sd          = DEFAULT_WITHIN_NEURON_SD,
                               intervention_within_neuron_sd     = DEFAULT_WITHIN_NEURON_SD, 
                               n_control_neurons = 10, 
@@ -36,7 +36,7 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1,
   n_total_neurons <- n_control_neurons + n_intervention_neurons
   
   #Generate control group neuron means about 0, repeat each mean for all the samples
-  control_grp_neuron_means <- rnorm(n_control_neurons, mean=0, sd = control_group_interneuron_sd)
+  control_grp_neuron_means <- rnorm(n_control_neurons, mean=0, sd = control_between_neuron_sd)
   neuron_effect <- rep(control_grp_neuron_means, each = samples_per_neuron)
   
   #All the neurons have the same within-neuron variance, so it suffices to add a residual noise term
@@ -47,7 +47,7 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1,
   
   
   #Repeat for the intervention group
-  intervention_grp_neuron_means <- rnorm(n_intervention_neurons, mean=0, sd = intervention_group_interneuron_sd)
+  intervention_grp_neuron_means <- rnorm(n_intervention_neurons, mean=0, sd = intervention_between_neuron_sd)
   neuron_effect <- rep(intervention_grp_neuron_means, each = samples_per_neuron)
   sample_effect <- rnorm(n_intervention_neurons*samples_per_neuron, mean=0, sd = intervention_within_neuron_sd)
   
@@ -78,21 +78,21 @@ gen_unpaired_data <- function(control_group_mean=0, treatment_effect=1,
 #' @inheritParams gen_unpaired_data
 #' @param interneuron_sd The standard deviation between neuron means within one of the groups (control or intervention)
 #' @param within_neuron_sd The standard deviation between different observations from the same neuron
-#' @param residual_interneuron_sd The standard deviation between the mean of the same neuron when in the control state vs the intervention state
+#' @param between_pairmeans_sd The standard deviation between the mean of the same neuron when in the control state vs the intervention state
 #' @param n_neurons The number of neurons
 #' @param samples_per_neuron The number of samples per neuron per group (each neuron is sampled this many times in both the control and intervention states)
 #'
 #' @inheritSection gen_unpaired_data return
 
-gen_paired_data <- function(control_group_mean=0, treatment_effect=1, interneuron_sd = 2, within_neuron_sd=2, 
-                            residual_interneuron_sd = 0.5, n_neurons=10, samples_per_neuron=100) {
+gen_paired_data <- function(control_group_mean=0, treatment_effect=1, between_neuron_sd = 2, within_neuron_sd=2, 
+                            between_pairmeans_sd = 0.5, n_neurons=10, samples_per_neuron=100) {
   
   intervention_group_mean <- control_group_mean + treatment_effect
   
   #Generate neuron means about 0, then add some gaussian noise to the observed means in each group
-  fixed_neuron_means            <- rnorm(n_neurons, mean=0, sd = interneuron_sd)
-  control_grp_neuron_means      <- fixed_neuron_means + rnorm(n_neurons, mean=0, sd = residual_interneuron_sd)
-  intervention_grp_neuron_means <- fixed_neuron_means + rnorm(n_neurons, mean=0, sd = residual_interneuron_sd)
+  fixed_neuron_means            <- rnorm(n_neurons, mean=0, sd = between_neuron_sd)
+  control_grp_neuron_means      <- fixed_neuron_means + rnorm(n_neurons, mean=0, sd = between_pairmeans_sd)
+  intervention_grp_neuron_means <- fixed_neuron_means + rnorm(n_neurons, mean=0, sd = between_pairmeans_sd)
   
   #Repeat the neuron means for each sample
   neuron_effect <- rep(control_grp_neuron_means, each = samples_per_neuron)
