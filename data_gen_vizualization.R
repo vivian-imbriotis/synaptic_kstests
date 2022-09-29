@@ -1,6 +1,7 @@
 source("data_generation.r")
 library(ggplot2)
 library(patchwork)
+library(cowplot)
 
 
 #' Generate gridded dataset draws
@@ -80,6 +81,51 @@ plot_gridded_dataset_draws <- function(longform_datasets, marginalize_neurons = 
   plt <- plt + theme(legend.title = element_blank())
   plt <- plt + theme(strip.text.x = element_text(size = 11), strip.text.y =  element_text(size = 11))
   return(plt)
+}
+
+plot_cdf_pdf <- function(longform_datasets){
+  df2 <- df[longform_datasets$within_neuron_variance==0.1,]
+  df3 <- df[longform_datasets$within_neuron_variance==1,]
+  
+  col_names <- as_labeller(c("0.1" = "Var[between] == 0.1",  "0.55" = "Var[between] == 0.55", "1" = "Var[between] == 1"), default = label_parsed)
+  
+  
+  common_theme <- theme(axis.title.x = element_blank(), axis.text=element_blank(), axis.ticks=element_blank(), legend.position="none", plot.margin = unit(c(0,0.5,0,0), "cm"))
+  common_theme_no_x_strip <- theme( axis.text=element_blank(), axis.ticks=element_blank(), legend.position="none", strip.text.x = element_blank(), plot.margin = unit(c(0,0.5,0,0), "cm"))
+  
+  cdf1 <-  ggplot(df2, aes(x=dependant, col=group)) + stat_ecdf(size=1) + facet_grid(cols=vars(between_neuron_variance), labeller=col_names  )
+  cdf1 <- cdf1 + common_theme + scale_x_continuous(limits=c(-4,4))
+  cdf1 <- cdf1 + labs(y="Cumulative Prob.")
+  
+  
+  pdf1 <- ggplot(data = df2, aes(x = dependant, color = group))
+  for (neuron in unique(df2$neuron_id)){
+    pdf1 <- pdf1 + geom_density(data = df2[df2$neuron_id == neuron,], size=1)
+  }
+  pdf1 <- pdf1 + facet_grid(cols = vars(between_neuron_variance) )
+  pdf1 <- pdf1 + common_theme_no_x_strip + scale_x_continuous(limits=c(-4,4))
+  pdf1 <- pdf1 + labs(y="Prob. Density", x="Amplitude or Frequency")
+  
+  cdf2 <- ggplot(df3, aes(x=dependant, col=group)) + stat_ecdf(size=1) + facet_grid(cols=vars(between_neuron_variance), labeller=col_names)
+  cdf2 <- cdf2 + common_theme  + scale_x_continuous(limits=c(-4,4))
+  cdf2 <- cdf2 + labs(y="Cumulative Prob.")
+  
+  pdf2 <- ggplot(data = df3, aes(x = dependant, color = group))
+  for (neuron in unique(df3$neuron_id)){
+    pdf2 <- pdf2 + geom_density(data = df3[df3$neuron_id == neuron,], size=1)
+  }
+  pdf2 <- pdf2 + facet_grid(cols = vars(between_neuron_variance))
+  pdf2 <- pdf2 + common_theme_no_x_strip + scale_x_continuous(limits=c(-4,4))
+  pdf2 <- pdf2 + labs(y="Prob. Density", x="Amplitude or Frequency")
+  
+  
+  
+  top_grd <- plot_grid(cdf1, pdf1, nrow=2) + draw_label(expression(Var[within] == 0.1), x = 1.0, y=0.5, size=12, angle=270)
+  bottom_grd <- plot_grid(cdf2, pdf2, nrow=2) + draw_label(expression(Var[within] == 1), x = 1.0, y=0.5, size=12, angle=270)
+  
+  grd <- plot_grid(top_grd, bottom_grd, nrow=2, scale = 0.95)
+  
+  return(grd)
 }
 
 
